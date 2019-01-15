@@ -11,6 +11,8 @@ With this cluster connect we can send out traffic from thoose ip and still host 
 No more i cant deploy untill that service is deploy ore that ip is open
 
 
+![alt text](https://raw.githubusercontent.com/mattiashem/envoy-cluster-connect/master/clusterconnect.png "cluster connect")
+
 ## How it works
 
 The setup is with tho envoy proxy servers one for the client in the cluster talk to. The proxy then send the request downstream to a proxy inside the env example prod. The downstream proxy then redirect the request to the correct host.
