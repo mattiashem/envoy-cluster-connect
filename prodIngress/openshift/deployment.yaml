@@ -1,0 +1,94 @@
+
+apiVersion: v1
+kind: DeploymentConfig
+metadata:
+  name: envoy-egress
+spec:
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: envoy-egress
+    spec:
+      containers:
+      - name: envoy
+        image: envoyproxy/envoy:latest
+        resources:
+          # Needs to be in sync with Dockerfile memory limit (just until the JVM is container-aware)
+          # but this is the entire container memory, not just heap setting
+          requests:
+            memory: "512Mi"
+            cpu: "150m"
+          limits:
+            memory: "512Mi"
+            cpu: "350m"        
+        ports:
+        - containerPort: 10000
+          name: webb
+        - containerPort: 3401
+          name: mysql
+        livenessProbe:
+          tcpSocket:
+            port: 10000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 10000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        volumeMounts:
+        - name: envoy-certs
+          mountPath: /etc/ssl
+        - name: envoy-config
+          mountPath: /etc/envoy
+      volumes:
+      - name: envoy-certs
+        secret:
+          secretName: envoy.certs
+      - name: envoy-config
+        configMap:
+           name: envoy-config
+           items:
+            - key: config
+              path:  envoy.yaml
+
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: envoy-webb
+  name: envoy-webb-node
+spec:
+  selector:
+    app: envoy-egress
+  type: NodePort
+  ports:
+  - name: webb
+    protocol: TCP
+    nodePort: 30002
+    port: 10000    
+
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: envoy-mysql
+  name: envoy-mysql
+spec:
+  selector:
+    app: envoy-egress
+  type: NodePort
+  ports:
+  - name: webb
+    protocol: TCP
+    nodePort: 30401
+    port: 3401
+

@@ -1,0 +1,31 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: client-test
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: client-test
+    spec:
+      containers:
+      - name: client-test
+        image: praqma/network-multitool
+        command: ["tail","-f","/etc/fstab"]
+        volumeMounts:
+        - name: envoy-certs
+          mountPath: /etc/ssl
+        - name: envoy-config
+          mountPath: /etc/envoy
+      volumes:
+      - name: envoy-certs
+        secret:
+          secretName: envoy.certs
+      - name: envoy-config
+        configMap:
+           name: envoy-config
+           items:
+            - key: config
+              path:  envoy.yaml
+        

@@ -1,0 +1,47 @@
+##Generate root
+
+openssl genrsa -aes256 -out private/ca.key.pem 4096
+openssl req -config ca_openssl.cnf -key private/ca.key.pem -new -x509 -days 7300 -sha256 -extensions v3_ca -out certs/ca.cert.pem
+openssl x509 -noout -text -in certs/ca.cert.pem
+
+
+##Make intermediate
+
+
+### Create certs
+openssl genrsa -aes256 -out private/intermediate.key.pem 4096
+openssl req -config openssl.cnf -new -sha256 -key private/intermediate.key.pem -out csr/intermediate.csr.pem
+
+### Signe the cert
+openssl ca -config ca_openssl.cnf -extensions v3_intermediate_ca -days 3650 -notext -md sha256 -in csr/intermediate.csr.pem -out certs/intermediate.cert.pem
+
+### Validate
+openssl x509 -noout -text  -in certs/intermediate.cert.pem
+openssl verify -CAfile certs/ca.cert.pem       certs/intermediate.cert.pem
+
+
+## Make chain 
+cat certs/intermediate.cert.pem  certs/ca.cert.pem > certs/ca-chain.cert.pem
+
+
+
+## Make Server cert
+openssl genrsa -out private/envoy.int.key.pem 2048
+openssl req -config im_openssl.cnf -key private/envoy.int.key.pem -new -sha256 -out csr/envoy.int.csr.pem
+
+
+## Sign with intermeterly cert
+openssl ca -config im_openssl.cnf -extensions server_cert -days 375 -notext -md sha256 -in csr/envoy.int.csr.pem -out certs/envoy.int.cert.pem
+
+## Validate
+openssl x509 -noout -text       -in certs/envoy.int.cert.pem
+openssl verify -CAfile certs/ca-chain.cert.pem certs/envoy.int.cert.pem
+
+
+
+## Making Cleint certs
+openssl genrsa -out private/envoy.int-client.key.pem 2048
+openssl req -config im_openssl.cnf -key private/envoy.int-client.key.pem -new -sha256 -out csr/envoy.int-client.csr.pem
+
+## Sign client
+openssl ca -config im_openssl.cnf -extensions ssl_client -days 375 -notext -md sha256 -in csr/envoy.int-client.csr.pem -out certs/envoy.int-client.cert.pem

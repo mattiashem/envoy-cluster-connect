@@ -1,0 +1,97 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: envoy-egress
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: envoy-egress
+    spec:
+      containers:
+      - name: envoy
+        image: envoyproxy/envoy:latest
+        ports:
+        - containerPort: 10000
+          name: webb
+        - containerPort: 3401
+          name: sql
+        livenessProbe:
+          tcpSocket:
+            port: 10000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          tcpSocket:
+            port: 10000
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        volumeMounts:
+        - name: envoy-certs
+          mountPath: /etc/ssl
+        - name: envoy-config
+          mountPath: /etc/envoy
+      volumes:
+      - name: envoy-certs
+        secret:
+          secretName: envoy.certs
+      - name: envoy-config
+        configMap:
+           name: envoy-config
+           items:
+            - key: config
+              path:  envoy.yaml
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: google-com
+  name: google-com
+spec:
+  selector:
+    app: envoy-egress
+  type: ClusterIP
+  ports:
+  - name: webb
+    protocol: TCP
+    targetPort: 10000
+    port: 80
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: example-com
+  name: example-com
+spec:
+  selector:
+    app: envoy-egress
+  type: ClusterIP
+  ports:
+  - name: webb
+    protocol: TCP
+    targetPort: 10000
+    port: 80    
+---    
+
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    name: mysql
+  name: mysql
+spec:
+  selector:
+    app: envoy-egress
+  type: ClusterIP
+  ports:
+  - name: mysql
+    protocol: TCP
+    port: 3306
+    targetPort: 3401
